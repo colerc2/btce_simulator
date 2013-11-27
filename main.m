@@ -9,6 +9,13 @@ pair = 'btc_usd';
 sliding_window_width = 10000;%seconds
 plot_every_n_seconds = 20;
 simulation_speed = 1;%1 is as fast as possible(gg cpu), 0 is real time(lame):TODO
+btc_fee = .002;
+
+%initialize wallet m8
+wallet.btc = 12;
+wallet.usd = 0;
+wallet.btc_on_orders = 0;
+wallet.usd_on_orders = 0;
 
 %read in data from csv file, save as .mat so it's faster next time, it
 %takes a reaaaalllly long time the first time, like 30 minutes or so, after
@@ -34,6 +41,9 @@ plot(seconds, [btce_data.last]);
 datetick('x', 'keepticks', 'keeplimits'); %<----needs changed for data >24h
 ylabel('BTC/USD ($)'); xlabel('Time');
 
+%do a bunch of singal processing that the bot will use later
+
+
 %now that we have all the data, start simulating the market
 
 %buys and sells
@@ -56,7 +66,7 @@ for ii = 1:length(seconds)
         figure(2);
         plot_indices = max(1,ii-sliding_window_width):min(length(seconds),ii);
         
-        %plots buys and sells, this is gonna suck
+        %plots buys and sells, this is gonna suck TODO
         if(~isempty(buys))
             for jj = 1:length(buys)
                 buy_plot_indices = plot_indices(seconds(plot_indices)>...
@@ -67,7 +77,7 @@ for ii = 1:length(seconds)
                     'b',seconds(buy_plot_indices),temp_ones, 'g');
                 set(handle(2), 'LineWidth', 3);
                 xlim([(addtodate(seconds(ii),-sliding_window_width,'second')) seconds(ii)]);
-                datetick('x', 'keepticks', 'keeplimits'); %<----needs changed for data >24h
+                datetick('x', 'keepticks', 'keeplimits'); %<----needs changed for data >24h TODO
             end
         else
             plot(seconds(plot_indices),[btce_data(plot_indices).last]);
@@ -78,8 +88,27 @@ for ii = 1:length(seconds)
         pause(.01);
     end
        
+    %create a sell at a random time for testing
+    if(ii == 300)
+        wallet.btc_on_orders = 1;
+        wallet.btc = wallet.btc - 1;
+        
+        temp.time = seconds(ii);
+        temp.quantity = 1;
+        temp.price = 718;
+        temp.units = 'btc';
+        temp.buy = btce_data(ii).buy;
+        temp.sell = btce_data(ii).sell;
+        temp.completed = 0;
+        temp.time_completed = 0;
+        sells = [sells temp];
+    end
+    
     %create a buy at random time for testing
-    if(ii == 200)
+    if(ii == 1200)
+        wallet.usd_on_orders = 702;
+        wallet.usd = wallet.usd - 702;
+        
         temp.time = seconds(ii);
         temp.quantity = 1;
         temp.price = 702;
@@ -96,17 +125,45 @@ for ii = 1:length(seconds)
         for jj = 1:length(buys)
             if(buys(jj).completed == 0)
                 %assuming that the sell price is higher than price we'd like to
-                %buy at
+                %buy at when the buy was created
                 if(btce_data(ii).buy < buys(jj).price)
                     buys(jj).completed = 1;
                     buys(jj).time_completed = seconds(ii);
                     fprintf('%f BTC bought at $%f\n', buys(jj).quantity,...
                         buys(jj).price);
+                    
+                    %adjust wallet prices
+                    usd_from_wallet = buys(jj).price*buys(jj).quantity;
+                    btc_to_wallet = buys(jj).quantity * (1-btc_fee);
+                    wallet.btc = wallet.btc + btc_to_wallet;
+                    wallet.usd_on_orders = wallet.usd_on_orders - usd_from_wallet;
                 end
             end
        end
     end
     
     %sells
+    if(~isempty(sells))
+        for jj = 1:length(sells)
+            if(sells(jj).completed == 0)
+                %assuming that the buy price is lower than price we'd like to
+                %sell at when the buy was created
+                if(btce_data(ii).sell > sells(jj).price)
+                    sells(jj).completed = 1;
+                    sells(jj).time_completed = seconds(ii);
+                    fprintf('%f BTC sold at $%f\n', sells(jj).quantity,...
+                        sells(jj).price);
+                    
+                %adjust wallet prices
+                btc_from_wallet = sells(jj).quantity;
+                usd_to_wallet = sells(jj).quantity * sells(jj).price * (1-btc_fee);
+                wallet.btc_on_orders = wallet.btc_on_orders - btc_from_wallet;
+                wallet.usd = wallet.usd + usd_to_wallet;
+                end
+            end
+       end
+    end
     
 end
+
+wallet

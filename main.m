@@ -6,8 +6,8 @@ data_file_name = 'btc_usd_depth';
 data_file_extension = '.csv';
 load_from_mat = 1; %if you've loaded this file before, set this to 1
 pair = 'btc_usd';
-sliding_window_width = 10000;%seconds
-plot_every_n_seconds = 20;
+sliding_window_width = 1000;%seconds
+plot_every_n_seconds = 2;
 simulation_speed = 1;%1 is as fast as possible(gg cpu), 0 is real time(lame):TODO
 btc_fee = .002;
 
@@ -42,7 +42,21 @@ datetick('x', 'keepticks', 'keeplimits'); %<----needs changed for data >24h
 ylabel('BTC/USD ($)'); xlabel('Time');
 
 %do a bunch of singal processing that the bot will use later
+fprintf('Doing some data crunching (maf and such)...');
+%simple moving average filters, second param changes the order (seconds)
+maf_10 = moving_average([btce_data.last],10);
+maf_100 = moving_average([btce_data.last],100);
+%weighted moving average
+wmaf_10 = weighted_moving_average([btce_data.last],10);
+wmaf_100 = weighted_moving_average([btce_data.last],100);
+%TODO: exponential moving average filters
+%TODO: Moving average convergence-divergence
+%TODO: plot all of these against the maximum/minimum change in price over
+%the next x seconds/minutes. this will show whether there is some sort of
+%correlation between these indicators and future prices. this shit is
+%weird, why can't i just have a time machine
 
+fprintf('done!\n');
 
 %now that we have all the data, start simulating the market
 
@@ -67,27 +81,33 @@ for ii = 1:length(seconds)
         plot_indices = max(1,ii-sliding_window_width):min(length(seconds),ii);
         
         %plots buys and sells, this is gonna suck TODO
-        if(~isempty(buys))
-            for jj = 1:length(buys)
-                buy_plot_indices = plot_indices(seconds(plot_indices)>...
-                    buys(jj).time);
-                temp_ones = ones(1,length(buy_plot_indices))*buys(jj).price;
-                %plot(seconds(buy_plot_indices),temp_ones, 'g', 'LineWidth', 3);
-                handle = plot(seconds(plot_indices),[btce_data(plot_indices).last],...
-                    'b',seconds(buy_plot_indices),temp_ones, 'g');
-                set(handle(2), 'LineWidth', 3);
-                xlim([(addtodate(seconds(ii),-sliding_window_width,'second')) seconds(ii)]);
-                datetick('x', 'keepticks', 'keeplimits'); %<----needs changed for data >24h TODO
-            end
-        else
-            plot(seconds(plot_indices),[btce_data(plot_indices).last]);
+%         if(~isempty(buys))
+%             for jj = 1:length(buys)
+%                 buy_plot_indices = plot_indices(seconds(plot_indices)>...
+%                     buys(jj).time);
+%                 temp_ones = ones(1,length(buy_plot_indices))*buys(jj).price;
+%                 %plot(seconds(buy_plot_indices),temp_ones, 'g', 'LineWidth', 3);
+%                 handle = plot(seconds(plot_indices),[btce_data(plot_indices).last],...
+%                     'b',seconds(buy_plot_indices),temp_ones, 'g');
+%                 set(handle(2), 'LineWidth', 3);
+%                 xlim([(addtodate(seconds(ii),-sliding_window_width,'second')) seconds(ii)]);
+%                 datetick('x', 'keepticks', 'keeplimits'); %<----needs changed for data >24h TODO
+%             end
+%         else
+            h = plot(seconds(plot_indices),[btce_data(plot_indices).last],'b', ...
+                seconds(plot_indices), maf_10(plot_indices),'g',...
+                seconds(plot_indices), maf_100(plot_indices), 'r',...
+                seconds(plot_indices), wmaf_10(plot_indices), 'c',...
+                seconds(plot_indices), wmaf_100(plot_indices), 'm');
+            set(h(1), 'LineWidth', 2);
             xlim([(addtodate(seconds(ii),-sliding_window_width,'second')) seconds(ii)]);
             datetick('x', 'keepticks', 'keeplimits'); %<----needs changed for data >24h
-        end
+%         end
         
         pause(.01);
     end
        
+    
     %create a sell at a random time for testing
     if(ii == 300)
         wallet.btc_on_orders = 1;

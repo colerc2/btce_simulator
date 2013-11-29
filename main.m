@@ -94,48 +94,48 @@ sells = [];
 %loop through each data point, should be at a maximum of 1Hz
 for ii = 1:length(seconds)
     %make a sliding window plot
-    if(mod(ii,plot_every_n_seconds)==0)
-        figure(2);subplot(2,1,1);
-        plot_indices = max(1,ii-sliding_window_width):min(length(seconds),ii);
-        
-        %plots buys and sells, this is gonna suck TODO
-%         if(~isempty(buys))
-%             for jj = 1:length(buys)
-%                 buy_plot_indices = plot_indices(seconds(plot_indices)>...
-%                     buys(jj).time);
-%                 temp_ones = ones(1,length(buy_plot_indices))*buys(jj).price;
-%                 %plot(seconds(buy_plot_indices),temp_ones, 'g', 'LineWidth', 3);
-%                 handle = plot(seconds(plot_indices),[btce_data(plot_indices).last],...
-%                     'b',seconds(buy_plot_indices),temp_ones, 'g');
-%                 set(handle(2), 'LineWidth', 3);
-%                 xlim([(addtodate(seconds(ii),-sliding_window_width,'second')) seconds(ii)]);
-%                 datetick('x', 'keepticks', 'keeplimits'); %<----needs changed for data >24h TODO
-%             end
-%         else
-            h = plot(seconds(plot_indices),[btce_data(plot_indices).last],'b', ...
-                seconds(plot_indices), maf_10(plot_indices),'g',...
-                seconds(plot_indices), maf_100(plot_indices), 'r',...
-                seconds(plot_indices), wmaf_10(plot_indices), 'c',...
-                seconds(plot_indices), wmaf_100(plot_indices), 'm',...
-                seconds(plot_indices), emaf_005(plot_indices), 'k');
-            set(h(1), 'LineWidth', 2);
-            xlim([(addtodate(seconds(ii),-sliding_window_width,'second')) seconds(ii)]);
-            datetick('x', 'keepticks', 'keeplimits'); %<----needs changed for data >24h
-            subplot(2,1,2);
-            h = plot(seconds(plot_indices), change_in_future_300(plot_indices,1),'b',...
-                seconds(plot_indices), change_in_future_300(plot_indices,2),'g',...
-                seconds(plot_indices), macd(plot_indices),'r',...
-                seconds(plot_indices), zeros(1,length(plot_indices)),'c');
-            set(h, 'LineWidth', 2);
-            ylim([-15 15]);
-            xlim([(addtodate(seconds(ii),-sliding_window_width,'second')) seconds(ii)]);
-            datetick('x', 'keepticks', 'keeplimits'); %<----needs changed for data >24h
-            
-    %end
-        
-        pause(.01);
-    end
-       
+    %     if(mod(ii,plot_every_n_seconds)==0)
+    %         figure(2);subplot(2,1,1);
+    %         plot_indices = max(1,ii-sliding_window_width):min(length(seconds),ii);
+    %
+    %         %plots buys and sells, this is gonna suck TODO
+    % %         if(~isempty(buys))
+    % %             for jj = 1:length(buys)
+    % %                 buy_plot_indices = plot_indices(seconds(plot_indices)>...
+    % %                     buys(jj).time);
+    % %                 temp_ones = ones(1,length(buy_plot_indices))*buys(jj).price;
+    % %                 %plot(seconds(buy_plot_indices),temp_ones, 'g', 'LineWidth', 3);
+    % %                 handle = plot(seconds(plot_indices),[btce_data(plot_indices).last],...
+    % %                     'b',seconds(buy_plot_indices),temp_ones, 'g');
+    % %                 set(handle(2), 'LineWidth', 3);
+    % %                 xlim([(addtodate(seconds(ii),-sliding_window_width,'second')) seconds(ii)]);
+    % %                 datetick('x', 'keepticks', 'keeplimits'); %<----needs changed for data >24h TODO
+    % %             end
+    % %         else
+    %             h = plot(seconds(plot_indices),[btce_data(plot_indices).last],'b', ...
+    %                 seconds(plot_indices), maf_10(plot_indices),'g',...
+    %                 seconds(plot_indices), maf_100(plot_indices), 'r',...
+    %                 seconds(plot_indices), wmaf_10(plot_indices), 'c',...
+    %                 seconds(plot_indices), wmaf_100(plot_indices), 'm',...
+    %                 seconds(plot_indices), emaf_005(plot_indices), 'k');
+    %             set(h(1), 'LineWidth', 2);
+    %             xlim([(addtodate(seconds(ii),-sliding_window_width,'second')) seconds(ii)]);
+    %             datetick('x', 'keepticks', 'keeplimits'); %<----needs changed for data >24h
+    %             subplot(2,1,2);
+    %             h = plot(seconds(plot_indices), change_in_future_300(plot_indices,1),'b',...
+    %                 seconds(plot_indices), change_in_future_300(plot_indices,2),'g',...
+    %                 seconds(plot_indices), macd(plot_indices),'r',...
+    %                 seconds(plot_indices), zeros(1,length(plot_indices)),'c');
+    %             set(h, 'LineWidth', 2);
+    %             ylim([-15 15]);
+    %             xlim([(addtodate(seconds(ii),-sliding_window_width,'second')) seconds(ii)]);
+    %             datetick('x', 'keepticks', 'keeplimits'); %<----needs changed for data >24h
+    %
+    %     %end
+    %
+    %         pause(.01);
+    %     end
+    
     %do yo thang bot
     if(delta_macd(ii) < 0)%if the macd has a negative slope
         %check if it just crossed over
@@ -149,6 +149,7 @@ for ii = 1:length(seconds)
             temp.sell = btce_data(ii).sell;
             temp.completed = 0;
             temp.time_completed = 0;
+            temp.macd_slope = delta_macd(ii);
             sells = [sells temp];
             
             wallet.btc_on_orders = wallet.btc_on_orders + wallet.btc * 0.1;
@@ -161,36 +162,36 @@ for ii = 1:length(seconds)
     end
     
     %create a sell at a random time for testing
-%     if(ii == 300)
-%         wallet.btc_on_orders = 1;
-%         wallet.btc = wallet.btc - 1;
-%         
-%         temp.time = seconds(ii);
-%         temp.quantity = 1;
-%         temp.price = 718;
-%         temp.units = 'btc';
-%         temp.buy = btce_data(ii).buy;
-%         temp.sell = btce_data(ii).sell;
-%         temp.completed = 0;
-%         temp.time_completed = 0;
-%         sells = [sells temp];
-%     end
-%     
-%     %create a buy at random time for testing
-%     if(ii == 1200)
-%         wallet.usd_on_orders = 702;
-%         wallet.usd = wallet.usd - 702;
-%         
-%         temp.time = seconds(ii);
-%         temp.quantity = 1;
-%         temp.price = 702;
-%         temp.units = 'btc';
-%         temp.buy = btce_data(ii).buy;
-%         temp.sell = btce_data(ii).sell;
-%         temp.completed = 0;
-%         temp.time_completed = 0;
-%         buys = [buys temp];
-%     end
+    %     if(ii == 300)
+    %         wallet.btc_on_orders = 1;
+    %         wallet.btc = wallet.btc - 1;
+    %
+    %         temp.time = seconds(ii);
+    %         temp.quantity = 1;
+    %         temp.price = 718;
+    %         temp.units = 'btc';
+    %         temp.buy = btce_data(ii).buy;
+    %         temp.sell = btce_data(ii).sell;
+    %         temp.completed = 0;
+    %         temp.time_completed = 0;
+    %         sells = [sells temp];
+    %     end
+    %
+    %     %create a buy at random time for testing
+    %     if(ii == 1200)
+    %         wallet.usd_on_orders = 702;
+    %         wallet.usd = wallet.usd - 702;
+    %
+    %         temp.time = seconds(ii);
+    %         temp.quantity = 1;
+    %         temp.price = 702;
+    %         temp.units = 'btc';
+    %         temp.buy = btce_data(ii).buy;
+    %         temp.sell = btce_data(ii).sell;
+    %         temp.completed = 0;
+    %         temp.time_completed = 0;
+    %         buys = [buys temp];
+    %     end
     
     %buys
     if(~isempty(buys))
@@ -211,7 +212,7 @@ for ii = 1:length(seconds)
                     wallet.usd_on_orders = wallet.usd_on_orders - usd_from_wallet;
                 end
             end
-       end
+        end
     end
     
     %sells
@@ -226,46 +227,63 @@ for ii = 1:length(seconds)
                     fprintf('%f BTC sold at $%f\n', sells(jj).quantity,...
                         sells(jj).price);
                     
-                %adjust wallet prices
-                btc_from_wallet = sells(jj).quantity;
-                usd_to_wallet = sells(jj).quantity * sells(jj).price * (1-btc_fee);
-                wallet.btc_on_orders = wallet.btc_on_orders - btc_from_wallet;
-                wallet.usd = wallet.usd + usd_to_wallet;
-                
-                %create buy order at 98% of what sold for
-                %TODO this needs to be magical process
-                temp.time = seconds(ii);
-                temp.quantity = usd_to_wallet/(sells(jj).price*.99);
-                temp.price = sells(jj).price*.99;
-                temp.units = 'btc';
-                temp.buy = btce_data(ii).buy;
-                temp.sell = btce_data(ii).sell;
-                temp.completed = 0;
-                temp.time_completed = 0;
-                buys = [buys temp];
-                
-                wallet.usd = wallet.usd - usd_to_wallet;
-                wallet.usd_on_orders = wallet.usd_on_orders + usd_to_wallet;
-                
-                %         wallet.usd_on_orders = 702;
-%         wallet.usd = wallet.usd - 702;
-%         
-%         temp.time = seconds(ii);
-%         temp.quantity = 1;
-%         temp.price = 702;
-%         temp.units = 'btc';
-%         temp.buy = btce_data(ii).buy;
-%         temp.sell = btce_data(ii).sell;
-%         temp.completed = 0;
-%         temp.time_completed = 0;
-%         buys = [buys temp];
+                    %adjust wallet prices
+                    btc_from_wallet = sells(jj).quantity;
+                    usd_to_wallet = sells(jj).quantity * sells(jj).price * (1-btc_fee);
+                    wallet.btc_on_orders = wallet.btc_on_orders - btc_from_wallet;
+                    wallet.usd = wallet.usd + usd_to_wallet;
+                    
+                    %create buy order at 98% of what sold for
+                    %TODO this needs to be magical process
+                    temp.time = seconds(ii);
+                    temp.quantity = usd_to_wallet/(sells(jj).price*.99);
+                    temp.price = sells(jj).price*.99;
+                    temp.units = 'btc';
+                    temp.buy = btce_data(ii).buy;
+                    temp.sell = btce_data(ii).sell;
+                    temp.completed = 0;
+                    temp.time_completed = 0;
+                    buys = [buys temp];
+                    
+                    wallet.usd = wallet.usd - usd_to_wallet;
+                    wallet.usd_on_orders = wallet.usd_on_orders + usd_to_wallet;
+                    
+                    %         wallet.usd_on_orders = 702;
+                    %         wallet.usd = wallet.usd - 702;
+                    %
+                    %         temp.time = seconds(ii);
+                    %         temp.quantity = 1;
+                    %         temp.price = 702;
+                    %         temp.units = 'btc';
+                    %         temp.buy = btce_data(ii).buy;
+                    %         temp.sell = btce_data(ii).sell;
+                    %         temp.completed = 0;
+                    %         temp.time_completed = 0;
+                    %         buys = [buys temp];
                 end
             end
-       end
+        end
     end
     if(mod(ii,250) == 0)
-       wallet 
+        wallet
     end
 end
+
+%do some analysis on slope of MACD vs time it takes to sell
+macd_slopes = [];
+sell_times = [];
+for ii = 1:length(sells)
+    %if(sells(ii).completed == 1)
+    macd_slopes = [macd_slopes sells(ii).macd_slope];
+    if(sells(ii).completed == 1)
+        sell_times = [sell_times (sells(ii).time_completed-sells(ii).time)];
+    else
+        sell_times = [sell_times .02];
+    end
+    %end
+end
+sell_times = sell_times*86400;
+figure;
+scatter(macd_slopes, sell_times);
 
 wallet

@@ -62,13 +62,13 @@ emaf_015 = exponential_moving_average([btce_data.last],0.015);
 %the typical weights applied, i.e. the n-term MAF, and the fourth parameter
 %is the time period that each of these will be applied over, e.g. 12, 26,
 %9, 10 correspond to a 120sec,260,sec,90sec MACD
-macd = moving_average_convergence_divergence([btce_data.last],12,26,9,60);
+macd = moving_average_convergence_divergence([btce_data.last],16,30,10,20);
 %scale her so she's easier to plot with other stuff
-max_macd = max(abs(macd));
-macd = macd*(10/max_macd);
+%max_macd = max(abs(macd));
+%macd = macd*(10/max_macd);
 delta_macd = [0 (macd(2:end)-macd(1:end-1))];
 
-change_in_future_300 = change_in_future([btce_data.last],300);
+change_in_future_360 = change_in_future([btce_data.last],360);
 %TODO: plot all of these against the maximum/minimum change in price over
 %the next x seconds/minutes. this will show whether there is some sort of
 %correlation between these indicators and future prices. this shit is
@@ -94,53 +94,67 @@ sells = [];
 %loop through each data point, should be at a maximum of 1Hz
 for ii = 1:length(seconds)
     %make a sliding window plot
-    %     if(mod(ii,plot_every_n_seconds)==0)
-    %         figure(2);subplot(2,1,1);
-    %         plot_indices = max(1,ii-sliding_window_width):min(length(seconds),ii);
-    %
-    %         %plots buys and sells, this is gonna suck TODO
-    % %         if(~isempty(buys))
-    % %             for jj = 1:length(buys)
-    % %                 buy_plot_indices = plot_indices(seconds(plot_indices)>...
-    % %                     buys(jj).time);
-    % %                 temp_ones = ones(1,length(buy_plot_indices))*buys(jj).price;
-    % %                 %plot(seconds(buy_plot_indices),temp_ones, 'g', 'LineWidth', 3);
-    % %                 handle = plot(seconds(plot_indices),[btce_data(plot_indices).last],...
-    % %                     'b',seconds(buy_plot_indices),temp_ones, 'g');
-    % %                 set(handle(2), 'LineWidth', 3);
-    % %                 xlim([(addtodate(seconds(ii),-sliding_window_width,'second')) seconds(ii)]);
-    % %                 datetick('x', 'keepticks', 'keeplimits'); %<----needs changed for data >24h TODO
-    % %             end
-    % %         else
-    %             h = plot(seconds(plot_indices),[btce_data(plot_indices).last],'b', ...
-    %                 seconds(plot_indices), maf_10(plot_indices),'g',...
-    %                 seconds(plot_indices), maf_100(plot_indices), 'r',...
-    %                 seconds(plot_indices), wmaf_10(plot_indices), 'c',...
-    %                 seconds(plot_indices), wmaf_100(plot_indices), 'm',...
-    %                 seconds(plot_indices), emaf_005(plot_indices), 'k');
-    %             set(h(1), 'LineWidth', 2);
-    %             xlim([(addtodate(seconds(ii),-sliding_window_width,'second')) seconds(ii)]);
-    %             datetick('x', 'keepticks', 'keeplimits'); %<----needs changed for data >24h
-    %             subplot(2,1,2);
-    %             h = plot(seconds(plot_indices), change_in_future_300(plot_indices,1),'b',...
-    %                 seconds(plot_indices), change_in_future_300(plot_indices,2),'g',...
-    %                 seconds(plot_indices), macd(plot_indices),'r',...
-    %                 seconds(plot_indices), zeros(1,length(plot_indices)),'c');
-    %             set(h, 'LineWidth', 2);
-    %             ylim([-15 15]);
-    %             xlim([(addtodate(seconds(ii),-sliding_window_width,'second')) seconds(ii)]);
-    %             datetick('x', 'keepticks', 'keeplimits'); %<----needs changed for data >24h
-    %
-    %     %end
-    %
-    %         pause(.01);
-    %     end
+%             if(mod(ii,plot_every_n_seconds)==0)
+%                 figure(2);subplot(2,1,1);
+%                 plot_indices = max(1,ii-sliding_window_width):min(length(seconds),ii);
+%     
+%                 %plots buys and sells, this is gonna suck TODO
+%         %         if(~isempty(buys))
+%         %             for jj = 1:length(buys)
+%         %                 buy_plot_indices = plot_indices(seconds(plot_indices)>...
+%         %                     buys(jj).time);
+%         %                 temp_ones = ones(1,length(buy_plot_indices))*buys(jj).price;
+%         %                 %plot(seconds(buy_plot_indices),temp_ones, 'g', 'LineWidth', 3);
+%         %                 handle = plot(seconds(plot_indices),[btce_data(plot_indices).last],...
+%         %                     'b',seconds(buy_plot_indices),temp_ones, 'g');
+%         %                 set(handle(2), 'LineWidth', 3);
+%         %                 xlim([(addtodate(seconds(ii),-sliding_window_width,'second')) seconds(ii)]);
+%         %                 datetick('x', 'keepticks', 'keeplimits'); %<----needs changed for data >24h TODO
+%         %             end
+%         %         else
+%                     h = plot(seconds(plot_indices),[btce_data(plot_indices).last],'b', ...
+%                         seconds(plot_indices), maf_10(plot_indices),'g',...
+%                         seconds(plot_indices), maf_100(plot_indices), 'r',...
+%                         seconds(plot_indices), wmaf_10(plot_indices), 'c',...
+%                         seconds(plot_indices), wmaf_100(plot_indices), 'm',...
+%                         seconds(plot_indices), emaf_005(plot_indices), 'k');
+%                     set(h(1), 'LineWidth', 2);
+%                     xlim([(addtodate(seconds(ii),-sliding_window_width,'second')) seconds(ii)]);
+%                     datetick('x', 'keepticks', 'keeplimits'); %<----needs changed for data >24h
+%                     subplot(2,1,2);
+%                     h = plot(seconds(plot_indices), change_in_future_360(plot_indices,1),'b',...
+%                         seconds(plot_indices), change_in_future_360(plot_indices,2),'g',...
+%                         seconds(plot_indices), macd(plot_indices),'r',...
+%                         seconds(plot_indices), zeros(1,length(plot_indices)),'c');
+%                     set(h, 'LineWidth', 2);
+%                     ylim([-15 15]);
+%                     xlim([(addtodate(seconds(ii),-sliding_window_width,'second')) seconds(ii)]);
+%                     datetick('x', 'keepticks', 'keeplimits'); %<----needs changed for data >24h
+%     
+%             %end
+%     
+%                 pause(.01);
+%             end
     
     %do yo thang bot
-    if(delta_macd(ii) < 0)%if the macd has a negative slope
-        %check if it just crossed over
-        if((macd(ii) < 0) && (macd(ii-1) > 0))
+    %this is blowing my mind but let's see what happens
+    if(delta_macd(ii) > 0.0167)%if the macd has a negative slope below threshold
+        %make sure we haven't had a sell in the last 100 seconds
+        go_ahead_with_sell = 0;
+        if(isempty(sells))
+            go_ahead_with_sell = 1;
+        else
+            time_since_last_sell = (seconds(ii)-sells(end).time)*86400;
+            if(time_since_last_sell > 100)
+                go_ahead_with_sell = 1;
+            end
+        end
+        
+        if(go_ahead_with_sell == 1)
+            %check if it just crossed over
+            %if((macd(ii) < 0) && (macd(ii-1) > 0))
             %fuck it, sell
+            temp = [];
             temp.time = seconds(ii);
             temp.quantity = wallet.btc*0.1;
             temp.price = btce_data(ii).last;
@@ -157,6 +171,7 @@ for ii = 1:length(seconds)
             
             %print some stuff out
             %fprintf('Slope of MACD: %f', delta_macd(ii))
+            %end
         end
         
     end
@@ -235,6 +250,7 @@ for ii = 1:length(seconds)
                     
                     %create buy order at 98% of what sold for
                     %TODO this needs to be magical process
+                    temp = [];
                     temp.time = seconds(ii);
                     temp.quantity = usd_to_wallet/(sells(jj).price*.99);
                     temp.price = sells(jj).price*.99;
@@ -243,23 +259,12 @@ for ii = 1:length(seconds)
                     temp.sell = btce_data(ii).sell;
                     temp.completed = 0;
                     temp.time_completed = 0;
+                    temp.associated_sell = sells(jj);
                     buys = [buys temp];
                     
                     wallet.usd = wallet.usd - usd_to_wallet;
                     wallet.usd_on_orders = wallet.usd_on_orders + usd_to_wallet;
                     
-                    %         wallet.usd_on_orders = 702;
-                    %         wallet.usd = wallet.usd - 702;
-                    %
-                    %         temp.time = seconds(ii);
-                    %         temp.quantity = 1;
-                    %         temp.price = 702;
-                    %         temp.units = 'btc';
-                    %         temp.buy = btce_data(ii).buy;
-                    %         temp.sell = btce_data(ii).sell;
-                    %         temp.completed = 0;
-                    %         temp.time_completed = 0;
-                    %         buys = [buys temp];
                 end
             end
         end
@@ -269,21 +274,152 @@ for ii = 1:length(seconds)
     end
 end
 
+pause;
+
 %do some analysis on slope of MACD vs time it takes to sell
 macd_slopes = [];
-sell_times = [];
-for ii = 1:length(sells)
+buy_times = [];
+for ii = 1:length(buys)
     %if(sells(ii).completed == 1)
-    macd_slopes = [macd_slopes sells(ii).macd_slope];
-    if(sells(ii).completed == 1)
-        sell_times = [sell_times (sells(ii).time_completed-sells(ii).time)];
+    macd_slopes = [macd_slopes buys(ii).associated_sell.macd_slope];
+    if(buys(ii).completed == 1)
+        buy_times = [buy_times (buys(ii).time_completed-buys(ii).associated_sell.time)];
     else
-        sell_times = [sell_times .02];
+        buy_times = [buy_times .02];
     end
     %end
 end
-sell_times = sell_times*86400;
+buy_times = buy_times*86400;
 figure;
-scatter(macd_slopes, sell_times);
+scatter(macd_slopes, buy_times);
+
+%try to create some profiles of the MACD or something .005 -> -.025
+step_size = .001;
+macd = moving_average_convergence_divergence([btce_data.last],16,30,10,20);
+delta_macd = [0 (macd(2:end)-macd(1:end-1))];
+
+
+change_in_future_ = change_in_future([btce_data.last], 360);
+change_in_future_ = change_in_future_(:,2);
+%trim outliers
+change_in_future_(change_in_future_>0.005) = 0.005;
+change_in_future_(change_in_future_<(-0.025)) = -0.025;
+change_in_future_ = ceil((change_in_future_+.025)/.001);
+
+%data = [btce_data.last];
+success = 0;
+for profile_length = 5:5:100
+    %go through data and make profiles
+    success = 0;
+    tried = 0;
+    for index_number = 1:30
+       indices = find(change_in_future_==index_number);
+       temp_prof.data = zeros(1,profile_length);
+       temp_prof.num_points = 0;
+       for ii = 1:length(indices)
+           if(indices(ii) > profile_length)
+              sig_to_be_normalized = macd((indices(ii)-profile_length+1):indices(ii));
+              sig_to_be_normalized = sig_to_be_normalized/(max(abs(sig_to_be_normalized)));
+              temp_prof.data = temp_prof.data + sig_to_be_normalized;
+%               temp_prof.data = temp_prof.data + macd((indices(ii)-profile_length+1):indices(ii));
+              temp_prof.num_points = temp_prof.num_points + 1;
+           end
+       end
+       profile(index_number) = temp_prof;
+    end
+    
+    %normalize each profile
+    for ii = 1:length(profile)
+       profile(ii).data = profile(ii).data/max(abs(profile(ii).data));
+    end
+    
+    %now test
+    for ii = profile_length:length(change_in_future_)
+       macd_signal = macd((ii-profile_length+1):ii);
+       %macd_signal = macd_signal/max(abs(macd_signal));
+       least_squares = [];
+       for each_prof = 1:length(profile)
+          least_squares(each_prof) = sum((macd_signal-profile(each_prof).data).^2);
+       end
+       
+       [min_, chosen_prof] = min(least_squares);
+       if(chosen_prof < 10)
+          if(change_in_future_(ii) < 15)
+             success = success + 1; 
+          end
+          fprintf('Computed: %i, Actual: %i\n', chosen_prof, change_in_future_(ii));
+          tried = tried + 1;
+       end
+%        if((abs(chosen_prof - change_in_future_(ii)) < 3))
+%            success = success + 1;
+%        end
+    end
+%     fprintf('Profile size: %i, percent correct: %f\n', profile_length, (success/length(change_in_future_)));
+    fprintf('Profile size: %i, percent correct: %f\n', profile_length, (success/tried));
+end
+%fprintf('Success: %f', (success/length(change_in_future_)));
+
+
+
+time_for_future = 300; %seconds, chosen arbitrarily
+%lots of plots, prepare your anus
+%change_in_future_300 = change_in_future([btce_data.last],300);
+trials = [];
+change_in_future_ = [];
+macd = [];
+delta_macd = [];
+trial.quantity = 0;
+trial.future_length = 0;
+trial.ii = 0;
+trial.short = 0;
+trial.long = 0;
+trial.sig = 0;
+trial.slope = 0;
+for future_length = 360
+    change_in_future_ = change_in_future([btce_data.last],future_length);
+    for ii = 5:5:120
+        for short = 6:2:18
+            for long = 22:2:30
+                for sig = 6:1:12
+                    %macd = moving_average_convergence_divergence([btce_data.last],12,26,9,ii);
+                    macd = moving_average_convergence_divergence([btce_data.last],short,long,sig,ii);
+                    delta_macd = [0 (macd(2:end)-macd(1:end-1))];
+                    delta_delta_macd = [0 (delta_macd(2:end)-delta_macd(1:end-1))];
+                    delta_delta_delta_macd = [0 (delta_delta_macd(2:end)-delta_delta_macd(1:end-1))];                    
+                    
+                    
+                    change_thresh = (change_in_future_(:,2)>-0.011);
+                    slope_threshold = max(delta_macd(change_thresh));
+                    
+                    %i can't get this to work, wtf, oh well, just count
+                    number_past_threshold = length(delta_macd(delta_macd>slope_threshold));
+                    fprintf([num2str(future_length) ' second future, ' ...
+                        num2str(ii) ' second MACD(' num2str(short) ','...
+                        num2str(long) ',' num2str(sig) '): ' ...
+                        num2str(number_past_threshold) '\n']);
+                    
+                    trial.quantity = number_past_threshold;
+                    trial.future_length = future_length;
+                    trial.ii = ii;
+                    trial.short = short;
+                    trial.long = long;
+                    trial.sig = sig;
+                    trial.slope = slope_threshold;
+                    trials = [trials trial];
+                    
+                    figure;
+                    scatter(delta_delta_delta_macd(1:length(change_in_future_(:,2))), change_in_future_(:,2));
+
+                    %figure;
+                    %scatter(delta_macd(1:length(change_in_future_(:,2))), change_in_future_(:,2));
+                    %title(['Price change: ' num2str(ii) ' seconds, macd_dt: ' num2str(jj) ' seconds']);
+                end
+            end
+        end
+    end
+end
+
+% figure;
+% scatter(delta_macd(1:length(change_in_future_300(:,2))), change_in_future_300(:,2));
 
 wallet

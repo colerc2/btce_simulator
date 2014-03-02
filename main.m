@@ -8,11 +8,12 @@ clear all; close all; clc;
 %runtime params
 data_file_path = 'data\';
 data_file_name = 'btc_usd_depth';
+data_file_name = 'btc_usd_depth_nov_24_dec_18';
 data_file_extension = '.csv';
 load_from_mat = 1; %if you've loaded this file before, set this to 1
 pair = 'btc_usd';
-sliding_window_width = 1000;%seconds
-plot_every_n_seconds = 20;
+sliding_window_width = 5000;%seconds
+plot_every_n_seconds = 100;
 simulation_speed = 1;%1 is as fast as possible(gg cpu), 0 is real time(lame):TODO
 btc_fee = .002;
 window_length = 1; %minute(TODO, see above), for financial analysis stuff, maf, emaf, macd, etc.
@@ -23,52 +24,62 @@ wallet.usd = 0;
 wallet.btc_on_orders = 0;
 wallet.usd_on_orders = 0;
 
+%constants defined that help access certain parameters in data
+high = 1; low = 2; avg = 3; vol = 4; vol_cur = 5; last = 6; buy = 7;
+sell = 8; updated = 9; server_time = 10;
+
 %read in data from csv file, save as .mat so it's faster next time, it
-%takes a reaaaalllly long time the first time, like 30 minutes or so, after
-%that, once it's in .mat format, it should only take a few seconds for day
-%worth of data
+%takes a reaaaalllly long time the first time, mostly due to processing the
+%damn dates, TODO:try to speed date conversion up
 fprintf('Loading...');
 if(load_from_mat)
     load([data_file_name '.mat']);
 else
-    btce_data = read_btce_csv([data_file_path data_file_name data_file_extension]);
+    btce_data_cell = read_btce_csv([data_file_path data_file_name data_file_extension]);
+    btce_data.high = [btce_data_cell{:,high}];
+    btce_data.low = [btce_data_cell{:,low}];
+    btce_data.avg = [btce_data_cell{:,avg}];
+    btce_data.vol = [btce_data_cell{:,vol}];
+    btce_data.vol_cur = [btce_data_cell{:,vol_cur}];
+    btce_data.last = [btce_data_cell{:,last}];
+    btce_data.buy = [btce_data_cell{:,buy}];
+    btce_data.sell = [btce_data_cell{:,sell}];
+    btce_data.updated = [btce_data_cell{:,updated}];
+    btce_data.server_time = [btce_data_cell{:,server_time}];
+    clear btce_data_cell;
+
     save([data_file_name '.mat'], 'btce_data');
 end
 fprintf('done!\n');
 
-%convert btce_data.updated dates to matlab format (Matlab serial dates)
-fprintf('Converting dates for Matlab...');
-seconds = datenum(char([btce_data.updated]));%takes a few seconds
-fprintf('done!\n');
-
 %test plot for data vs. date
 figure;
-plot(seconds, [btce_data.last]);
+plot(btce_data.updated, btce_data.last);
 datetick('x', 'keepticks', 'keeplimits'); %<----needs changed for data >24h
 ylabel('BTC/USD ($)'); xlabel('Time');
 
 %do a bunch of singal processing that the bot will use later
 fprintf('Doing some data crunching (maf and such)...');
 %simple moving average filters, second param changes the order (seconds)
-maf_10 = moving_average([btce_data.last],10);
-maf_100 = moving_average([btce_data.last],100);
+maf_10 = moving_average(btce_data.last,10);
+maf_100 = moving_average(btce_data.last,100);
 %weighted moving average
-wmaf_10 = weighted_moving_average([btce_data.last],10);
-wmaf_100 = weighted_moving_average([btce_data.last],100);
+wmaf_10 = weighted_moving_average(btce_data.last,10);
+wmaf_100 = weighted_moving_average(btce_data.last,100);
 %exponential moving average
-emaf_005 = exponential_moving_average([btce_data.last],0.005);
-emaf_015 = exponential_moving_average([btce_data.last],0.015);
+emaf_005 = exponential_moving_average(btce_data.last,0.005);
+emaf_015 = exponential_moving_average(btce_data.last,0.015);
 %TODO: Moving average convergence-divergence, first three parameters are
 %the typical weights applied, i.e. the n-term MAF, and the fourth parameter
 %is the time period that each of these will be applied over, e.g. 12, 26,
 %9, 10 correspond to a 120sec,260,sec,90sec MACD
-macd = moving_average_convergence_divergence([btce_data.last],16,30,10,20);
+macd = moving_average_convergence_divergence(btce_data.last,16,30,10,20);
 %scale her so she's easier to plot with other stuff
 %max_macd = max(abs(macd));
 %macd = macd*(10/max_macd);
 delta_macd = [0 (macd(2:end)-macd(1:end-1))];
 
-change_in_future_360 = change_in_future([btce_data.last],360);
+change_in_future_360 = change_in_future(btce_data.last,360);
 %TODO: plot all of these against the maximum/minimum change in price over
 %the next x seconds/minutes. this will show whether there is some sort of
 %correlation between these indicators and future prices. this shit is
@@ -92,11 +103,12 @@ buys = [];
 sells = [];
 
 %loop through each data point, should be at a maximum of 1Hz
-for ii = 1:length(seconds)
+for ii = 1:length(btce_data.updated)
     %make a sliding window plot
 %             if(mod(ii,plot_every_n_seconds)==0)
-%                 figure(2);subplot(2,1,1);
-%                 plot_indices = max(1,ii-sliding_window_width):min(length(seconds),ii);
+%                 figure(2);subplot(2,1,1);hold on;
+%               
+%                 plot_indices = max(1,ii-sliding_window_width):min(length(btce_data.updated),ii);
 %     
 %                 %plots buys and sells, this is gonna suck TODO
 %         %         if(~isempty(buys))
@@ -112,28 +124,33 @@ for ii = 1:length(seconds)
 %         %                 datetick('x', 'keepticks', 'keeplimits'); %<----needs changed for data >24h TODO
 %         %             end
 %         %         else
-%                     h = plot(seconds(plot_indices),[btce_data(plot_indices).last],'b', ...
-%                         seconds(plot_indices), maf_10(plot_indices),'g',...
-%                         seconds(plot_indices), maf_100(plot_indices), 'r',...
-%                         seconds(plot_indices), wmaf_10(plot_indices), 'c',...
-%                         seconds(plot_indices), wmaf_100(plot_indices), 'm',...
-%                         seconds(plot_indices), emaf_005(plot_indices), 'k');
+%                     h = plot(btce_data.updated(plot_indices),btce_data.last(plot_indices),'b', ...
+%                         btce_data.updated(plot_indices), maf_10(plot_indices),'g',...
+%                         btce_data.updated(plot_indices), maf_100(plot_indices), 'r',...
+%                         btce_data.updated(plot_indices), wmaf_10(plot_indices), 'c',...
+%                         btce_data.updated(plot_indices), wmaf_100(plot_indices), 'm',...
+%                         btce_data.updated(plot_indices), emaf_005(plot_indices), 'k');
+%                     legend('Last','MAF\_10','MAF\_100','WMAF\_10','WMAF\_100','EMAF\_005');
 %                     set(h(1), 'LineWidth', 2);
-%                     xlim([(addtodate(seconds(ii),-sliding_window_width,'second')) seconds(ii)]);
+%                     xlim([(addtodate(btce_data.updated(ii),-sliding_window_width,'second')) btce_data.updated(ii)]);
 %                     datetick('x', 'keepticks', 'keeplimits'); %<----needs changed for data >24h
 %                     subplot(2,1,2);
-%                     h = plot(seconds(plot_indices), change_in_future_360(plot_indices,1),'b',...
-%                         seconds(plot_indices), change_in_future_360(plot_indices,2),'g',...
-%                         seconds(plot_indices), macd(plot_indices),'r',...
-%                         seconds(plot_indices), zeros(1,length(plot_indices)),'c');
+%                     scale = (max(abs(change_in_future_360.low*100)))/max(macd);
+%                     h = plot(btce_data.updated(plot_indices), 100*change_in_future_360.low(plot_indices),'b',...
+%                         btce_data.updated(plot_indices), 100*change_in_future_360.high(plot_indices),'g',...
+%                         btce_data.updated(plot_indices),scale*macd(plot_indices),'r',...
+%                         btce_data.updated(plot_indices), zeros(1,length(plot_indices)),'k');
+% 
+%                     %btce_data.updated(plot_indices), macd(plot_indices),'r',...
+%                     %    btce_data.updated(plot_indices), zeros(1,length(plot_indices)),'c');
 %                     set(h, 'LineWidth', 2);
-%                     ylim([-15 15]);
-%                     xlim([(addtodate(seconds(ii),-sliding_window_width,'second')) seconds(ii)]);
+%                     legend('Min Change', 'Max Change', 'MACD');
+%                     xlim([(addtodate(btce_data.updated(ii),-sliding_window_width,'second')) btce_data.updated(ii)]);
 %                     datetick('x', 'keepticks', 'keeplimits'); %<----needs changed for data >24h
 %     
 %             %end
 %     
-%                 pause(.01);
+%                 pause(.1);
 %             end
     
     %do yo thang bot
@@ -144,7 +161,7 @@ for ii = 1:length(seconds)
         if(isempty(sells))
             go_ahead_with_sell = 1;
         else
-            time_since_last_sell = (seconds(ii)-sells(end).time)*86400;
+            time_since_last_sell = (btce_data.updated(ii)-sells(end).time)*86400;
             if(time_since_last_sell > 100)
                 go_ahead_with_sell = 1;
             end
@@ -155,12 +172,12 @@ for ii = 1:length(seconds)
             %if((macd(ii) < 0) && (macd(ii-1) > 0))
             %fuck it, sell
             temp = [];
-            temp.time = seconds(ii);
+            temp.time = btce_data.updated(ii);
             temp.quantity = wallet.btc*0.1;
-            temp.price = btce_data(ii).last;
+            temp.price = btce_data.last(ii);
             temp.units = 'btc';
-            temp.buy = btce_data(ii).buy;
-            temp.sell = btce_data(ii).sell;
+            temp.buy = btce_data.buy(ii);
+            temp.sell = btce_data.sell(ii);
             temp.completed = 0;
             temp.time_completed = 0;
             temp.macd_slope = delta_macd(ii);
@@ -214,9 +231,9 @@ for ii = 1:length(seconds)
             if(buys(jj).completed == 0)
                 %assuming that the sell price is higher than price we'd like to
                 %buy at when the buy was created
-                if(btce_data(ii).last < buys(jj).price)
+                if(btce_data.last(ii) < buys(jj).price)
                     buys(jj).completed = 1;
-                    buys(jj).time_completed = seconds(ii);
+                    buys(jj).time_completed = btce_data.updated(ii);
                     fprintf('%f BTC bought at $%f\n', buys(jj).quantity,...
                         buys(jj).price);
                     
@@ -236,9 +253,9 @@ for ii = 1:length(seconds)
             if(sells(jj).completed == 0)
                 %assuming that the buy price is lower than price we'd like to
                 %sell at when the buy was created
-                if(btce_data(ii).last > sells(jj).price)
+                if(btce_data.last(ii) >= sells(jj).price)
                     sells(jj).completed = 1;
-                    sells(jj).time_completed = seconds(ii);
+                    sells(jj).time_completed = btce_data.updated(ii);
                     fprintf('%f BTC sold at $%f\n', sells(jj).quantity,...
                         sells(jj).price);
                     
@@ -251,12 +268,12 @@ for ii = 1:length(seconds)
                     %create buy order at 98% of what sold for
                     %TODO this needs to be magical process
                     temp = [];
-                    temp.time = seconds(ii);
-                    temp.quantity = usd_to_wallet/(sells(jj).price*.99);
-                    temp.price = sells(jj).price*.99;
+                    temp.time = btce_data.updated(ii);
+                    temp.quantity = usd_to_wallet/(sells(jj).price*.993);
+                    temp.price = sells(jj).price*.993;
                     temp.units = 'btc';
-                    temp.buy = btce_data(ii).buy;
-                    temp.sell = btce_data(ii).sell;
+                    temp.buy = btce_data.buy(ii);
+                    temp.sell = btce_data.sell(ii);
                     temp.completed = 0;
                     temp.time_completed = 0;
                     temp.associated_sell = sells(jj);

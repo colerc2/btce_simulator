@@ -4,7 +4,7 @@ function data = read_btce_csv(file_name, percent)
 %we're doin' it the old fashioned way
 
 %open file handle
-fid = fopen(file_name);
+fid = fopen(file_name,'rt');
 
 %find number of lines in file
 sys_cmd = ['find /c /v ""<' file_name];
@@ -16,7 +16,7 @@ line_count = round(line_count * percent) ;
 
 %preallocate cell array
 %line_array = cell(1000,1);
-line_array = cell(line_count,1);
+line_array = cell(line_count,10);
 
 %read lines, will do parsing later in parallel, do this in series because
 %speed is limited by disk read, multiple threads won't speed it up
@@ -28,19 +28,20 @@ maf = [ 0 0 0 0 0];
 for line_counter = 1:line_count
 %while(line_counter < 1000)
 %save to cell array
-    line_array{line_counter} = fgetl(fid);
+    %line_array{line_counter} = fgetl(fid);
     
     %split at commas
-    lineData = textscan(line_array{line_counter},'%s','Delimiter',',');
-    lineData = lineData{1};
-    line_array(line_counter,1:numel(lineData)) = lineData;
+    lineData = textscan(fgetl(fid),'%s',10,'Delimiter',',');
+  
+    %[textscan(fgetl(fid),'%s',10,'Delimiter',',')]
+    line_array(line_counter,:) = lineData{1};
+    %pack;
     
     %convert cells to appropriate types
     line_array(line_counter,1:8) = cellfun(@(s) {str2double(s)},...
         line_array(line_counter,1:8));
     line_array(line_counter,9:10) = cellfun(@(s) {datenum(char(s))},...
         line_array(line_counter,9:10));
-    
     
     %print progress to waitbar
     if(mod(line_counter,one_percent_of_file) == 0)

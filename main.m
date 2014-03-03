@@ -7,10 +7,10 @@ clear all; close all; clc;
 
 %runtime params
 data_file_path = 'data\';
-data_file_name = 'btc_usd_depth';
+%data_file_name = 'btc_usd_depth';
 data_file_name = 'btc_usd_depth_nov_24_dec_18';
 data_file_extension = '.csv';
-load_from_mat = 1; %if you've loaded this file before, set this to 1
+load_from_mat = 0; %if you've loaded this file before, set this to 1
 pair = 'btc_usd';
 sliding_window_width = 5000;%seconds
 plot_every_n_seconds = 100;
@@ -19,7 +19,7 @@ btc_fee = .002;
 window_length = 1; %minute(TODO, see above), for financial analysis stuff, maf, emaf, macd, etc.
 
 %initialize wallet m8
-wallet.btc = 12;
+wallet.btc = 1;
 wallet.usd = 0;
 wallet.btc_on_orders = 0;
 wallet.usd_on_orders = 0;
@@ -35,7 +35,7 @@ fprintf('Loading...');
 if(load_from_mat)
     load([data_file_name '.mat']);
 else
-    btce_data_cell = read_btce_csv([data_file_path data_file_name data_file_extension]);
+    btce_data_cell = read_btce_csv([data_file_path data_file_name data_file_extension], 1);
     btce_data.high = [btce_data_cell{:,high}];
     btce_data.low = [btce_data_cell{:,low}];
     btce_data.avg = [btce_data_cell{:,avg}];
@@ -52,11 +52,11 @@ else
 end
 fprintf('done!\n');
 
-%test plot for data vs. date
-figure;
-plot(btce_data.updated, btce_data.last);
-datetick('x', 'keepticks', 'keeplimits'); %<----needs changed for data >24h
-ylabel('BTC/USD ($)'); xlabel('Time');
+% %test plot for data vs. date
+% figure;
+% plot(btce_data.updated, btce_data.last);
+% datetick('x', 'keepticks', 'keeplimits'); %<----needs changed for data >24h
+% ylabel('BTC/USD ($)'); xlabel('Time');
 
 %do a bunch of singal processing that the bot will use later
 fprintf('Doing some data crunching (maf and such)...');
@@ -73,13 +73,21 @@ emaf_015 = exponential_moving_average(btce_data.last,0.015);
 %the typical weights applied, i.e. the n-term MAF, and the fourth parameter
 %is the time period that each of these will be applied over, e.g. 12, 26,
 %9, 10 correspond to a 120sec,260,sec,90sec MACD
-macd = moving_average_convergence_divergence(btce_data.last,16,30,10,20);
+short = 5;
+long = 28;
+sig = 10;
+period = 10;
+macd_window = 30;%used for sell signal later in code
+macd_spread_thresh = -1.5023;%used for sell signal later in code
+[macd, macdline, signal_line] = ...
+    moving_average_convergence_divergence(btce_data.last,...
+    short, long, sig, period);
 %scale her so she's easier to plot with other stuff
 %max_macd = max(abs(macd));
 %macd = macd*(10/max_macd);
 delta_macd = [0 (macd(2:end)-macd(1:end-1))];
 
-change_in_future_360 = change_in_future(btce_data.last,360);
+change_in_future_2880 = change_in_future(btce_data.last,2880);
 %TODO: plot all of these against the maximum/minimum change in price over
 %the next x seconds/minutes. this will show whether there is some sort of
 %correlation between these indicators and future prices. this shit is
@@ -154,8 +162,10 @@ for ii = 1:length(btce_data.updated)
 %             end
     
     %do yo thang bot
-    %this is blowing my mind but let's see what happens
-    if(delta_macd(ii) > 0.0167)%if the macd has a negative slope below threshold
+    %this if statement checks for a sell signal
+    if((min(macd(max(1,ii-macd_window):ii))<-1.5023) && ...%meets sell req.
+            ((macd(ii)>0) && (macd(ii-1) <0)))%macd is giving sell signal
+    %if(delta_macd(ii) > 0.0167)%if the macd has a negative slope below threshold
         %make sure we haven't had a sell in the last 100 seconds
         go_ahead_with_sell = 0;
         if(isempty(sells))
@@ -173,8 +183,8 @@ for ii = 1:length(btce_data.updated)
             %fuck it, sell
             temp = [];
             temp.time = btce_data.updated(ii);
-            temp.quantity = wallet.btc*0.1;
-            temp.price = btce_data.last(ii);
+            temp.quantity = wallet.btc*0.25;
+            temp.price = btce_data.last(ii)*0.9999;%TODO:might want to make this sell*.999
             temp.units = 'btc';
             temp.buy = btce_data.buy(ii);
             temp.sell = btce_data.sell(ii);
@@ -183,8 +193,8 @@ for ii = 1:length(btce_data.updated)
             temp.macd_slope = delta_macd(ii);
             sells = [sells temp];
             
-            wallet.btc_on_orders = wallet.btc_on_orders + wallet.btc * 0.1;
-            wallet.btc = wallet.btc - wallet.btc * 0.1;
+            wallet.btc_on_orders = wallet.btc_on_orders + wallet.btc * 0.25;
+            wallet.btc = wallet.btc - wallet.btc * 0.25;
             
             %print some stuff out
             %fprintf('Slope of MACD: %f', delta_macd(ii))
@@ -269,8 +279,8 @@ for ii = 1:length(btce_data.updated)
                     %TODO this needs to be magical process
                     temp = [];
                     temp.time = btce_data.updated(ii);
-                    temp.quantity = usd_to_wallet/(sells(jj).price*.993);
-                    temp.price = sells(jj).price*.993;
+                    temp.quantity = usd_to_wallet/(sells(jj).price*.99);
+                    temp.price = sells(jj).price*.99;
                     temp.units = 'btc';
                     temp.buy = btce_data.buy(ii);
                     temp.sell = btce_data.sell(ii);
@@ -286,157 +296,166 @@ for ii = 1:length(btce_data.updated)
             end
         end
     end
-    if(mod(ii,250) == 0)
-        wallet
+    if(mod(ii,2500) == 0)
+        %wallet
     end
 end
-
-pause;
-
-%do some analysis on slope of MACD vs time it takes to sell
-macd_slopes = [];
-buy_times = [];
-for ii = 1:length(buys)
-    %if(sells(ii).completed == 1)
-    macd_slopes = [macd_slopes buys(ii).associated_sell.macd_slope];
-    if(buys(ii).completed == 1)
-        buy_times = [buy_times (buys(ii).time_completed-buys(ii).associated_sell.time)];
-    else
-        buy_times = [buy_times .02];
-    end
-    %end
-end
-buy_times = buy_times*86400;
-figure;
-scatter(macd_slopes, buy_times);
-
-%try to create some profiles of the MACD or something .005 -> -.025
-step_size = .001;
-macd = moving_average_convergence_divergence([btce_data.last],16,30,10,20);
-delta_macd = [0 (macd(2:end)-macd(1:end-1))];
-
-
-change_in_future_ = change_in_future([btce_data.last], 360);
-change_in_future_ = change_in_future_(:,2);
-%trim outliers
-change_in_future_(change_in_future_>0.005) = 0.005;
-change_in_future_(change_in_future_<(-0.025)) = -0.025;
-change_in_future_ = ceil((change_in_future_+.025)/.001);
-
-%data = [btce_data.last];
-success = 0;
-for profile_length = 5:5:100
-    %go through data and make profiles
-    success = 0;
-    tried = 0;
-    for index_number = 1:30
-       indices = find(change_in_future_==index_number);
-       temp_prof.data = zeros(1,profile_length);
-       temp_prof.num_points = 0;
-       for ii = 1:length(indices)
-           if(indices(ii) > profile_length)
-              sig_to_be_normalized = macd((indices(ii)-profile_length+1):indices(ii));
-              sig_to_be_normalized = sig_to_be_normalized/(max(abs(sig_to_be_normalized)));
-              temp_prof.data = temp_prof.data + sig_to_be_normalized;
-%               temp_prof.data = temp_prof.data + macd((indices(ii)-profile_length+1):indices(ii));
-              temp_prof.num_points = temp_prof.num_points + 1;
-           end
-       end
-       profile(index_number) = temp_prof;
-    end
-    
-    %normalize each profile
-    for ii = 1:length(profile)
-       profile(ii).data = profile(ii).data/max(abs(profile(ii).data));
-    end
-    
-    %now test
-    for ii = profile_length:length(change_in_future_)
-       macd_signal = macd((ii-profile_length+1):ii);
-       %macd_signal = macd_signal/max(abs(macd_signal));
-       least_squares = [];
-       for each_prof = 1:length(profile)
-          least_squares(each_prof) = sum((macd_signal-profile(each_prof).data).^2);
-       end
-       
-       [min_, chosen_prof] = min(least_squares);
-       if(chosen_prof < 10)
-          if(change_in_future_(ii) < 15)
-             success = success + 1; 
-          end
-          fprintf('Computed: %i, Actual: %i\n', chosen_prof, change_in_future_(ii));
-          tried = tried + 1;
-       end
-%        if((abs(chosen_prof - change_in_future_(ii)) < 3))
-%            success = success + 1;
-%        end
-    end
-%     fprintf('Profile size: %i, percent correct: %f\n', profile_length, (success/length(change_in_future_)));
-    fprintf('Profile size: %i, percent correct: %f\n', profile_length, (success/tried));
-end
-%fprintf('Success: %f', (success/length(change_in_future_)));
-
-
-
-time_for_future = 300; %seconds, chosen arbitrarily
-%lots of plots, prepare your anus
-%change_in_future_300 = change_in_future([btce_data.last],300);
-trials = [];
-change_in_future_ = [];
-macd = [];
-delta_macd = [];
-trial.quantity = 0;
-trial.future_length = 0;
-trial.ii = 0;
-trial.short = 0;
-trial.long = 0;
-trial.sig = 0;
-trial.slope = 0;
-for future_length = 360
-    change_in_future_ = change_in_future([btce_data.last],future_length);
-    for ii = 5:5:120
-        for short = 6:2:18
-            for long = 22:2:30
-                for sig = 6:1:12
-                    %macd = moving_average_convergence_divergence([btce_data.last],12,26,9,ii);
-                    macd = moving_average_convergence_divergence([btce_data.last],short,long,sig,ii);
-                    delta_macd = [0 (macd(2:end)-macd(1:end-1))];
-                    delta_delta_macd = [0 (delta_macd(2:end)-delta_macd(1:end-1))];
-                    delta_delta_delta_macd = [0 (delta_delta_macd(2:end)-delta_delta_macd(1:end-1))];                    
-                    
-                    
-                    change_thresh = (change_in_future_(:,2)>-0.011);
-                    slope_threshold = max(delta_macd(change_thresh));
-                    
-                    %i can't get this to work, wtf, oh well, just count
-                    number_past_threshold = length(delta_macd(delta_macd>slope_threshold));
-                    fprintf([num2str(future_length) ' second future, ' ...
-                        num2str(ii) ' second MACD(' num2str(short) ','...
-                        num2str(long) ',' num2str(sig) '): ' ...
-                        num2str(number_past_threshold) '\n']);
-                    
-                    trial.quantity = number_past_threshold;
-                    trial.future_length = future_length;
-                    trial.ii = ii;
-                    trial.short = short;
-                    trial.long = long;
-                    trial.sig = sig;
-                    trial.slope = slope_threshold;
-                    trials = [trials trial];
-                    
-                    figure;
-                    scatter(delta_delta_delta_macd(1:length(change_in_future_(:,2))), change_in_future_(:,2));
-
-                    %figure;
-                    %scatter(delta_macd(1:length(change_in_future_(:,2))), change_in_future_(:,2));
-                    %title(['Price change: ' num2str(ii) ' seconds, macd_dt: ' num2str(jj) ' seconds']);
-                end
-            end
-        end
-    end
-end
-
-% figure;
-% scatter(delta_macd(1:length(change_in_future_300(:,2))), change_in_future_300(:,2));
 
 wallet
+%test plot for data vs. date
+figure; hold on;
+plot(btce_data.updated, btce_data.last);
+datetick('x', 'keepticks', 'keeplimits'); %<----needs changed for data >24h
+scatter([sells.time_completed],[sells.price],'r');
+scatter([buys.time_completed],[buys.price],'g');
+ylabel('BTC/USD ($)'); xlabel('Time');
+
+%pause;
+% 
+% %do some analysis on slope of MACD vs time it takes to sell
+% macd_slopes = [];
+% buy_times = [];
+% for ii = 1:length(buys)
+%     %if(sells(ii).completed == 1)
+%     macd_slopes = [macd_slopes buys(ii).associated_sell.macd_slope];
+%     if(buys(ii).completed == 1)
+%         buy_times = [buy_times (buys(ii).time_completed-buys(ii).associated_sell.time)];
+%     else
+%         buy_times = [buy_times .02];
+%     end
+%     %end
+% end
+% buy_times = buy_times*86400;
+% figure;
+% scatter(macd_slopes, buy_times);
+% 
+% %try to create some profiles of the MACD or something .005 -> -.025
+% step_size = .001;
+% macd = moving_average_convergence_divergence([btce_data.last],16,30,10,20);
+% delta_macd = [0 (macd(2:end)-macd(1:end-1))];
+% 
+% 
+% change_in_future_ = change_in_future([btce_data.last], 360);
+% change_in_future_ = change_in_future_(:,2);
+% %trim outliers
+% change_in_future_(change_in_future_>0.005) = 0.005;
+% change_in_future_(change_in_future_<(-0.025)) = -0.025;
+% change_in_future_ = ceil((change_in_future_+.025)/.001);
+% 
+% %data = [btce_data.last];
+% success = 0;
+% for profile_length = 5:5:100
+%     %go through data and make profiles
+%     success = 0;
+%     tried = 0;
+%     for index_number = 1:30
+%        indices = find(change_in_future_==index_number);
+%        temp_prof.data = zeros(1,profile_length);
+%        temp_prof.num_points = 0;
+%        for ii = 1:length(indices)
+%            if(indices(ii) > profile_length)
+%               sig_to_be_normalized = macd((indices(ii)-profile_length+1):indices(ii));
+%               sig_to_be_normalized = sig_to_be_normalized/(max(abs(sig_to_be_normalized)));
+%               temp_prof.data = temp_prof.data + sig_to_be_normalized;
+% %               temp_prof.data = temp_prof.data + macd((indices(ii)-profile_length+1):indices(ii));
+%               temp_prof.num_points = temp_prof.num_points + 1;
+%            end
+%        end
+%        profile(index_number) = temp_prof;
+%     end
+%     
+%     %normalize each profile
+%     for ii = 1:length(profile)
+%        profile(ii).data = profile(ii).data/max(abs(profile(ii).data));
+%     end
+%     
+%     %now test
+%     for ii = profile_length:length(change_in_future_)
+%        macd_signal = macd((ii-profile_length+1):ii);
+%        %macd_signal = macd_signal/max(abs(macd_signal));
+%        least_squares = [];
+%        for each_prof = 1:length(profile)
+%           least_squares(each_prof) = sum((macd_signal-profile(each_prof).data).^2);
+%        end
+%        
+%        [min_, chosen_prof] = min(least_squares);
+%        if(chosen_prof < 10)
+%           if(change_in_future_(ii) < 15)
+%              success = success + 1; 
+%           end
+%           fprintf('Computed: %i, Actual: %i\n', chosen_prof, change_in_future_(ii));
+%           tried = tried + 1;
+%        end
+% %        if((abs(chosen_prof - change_in_future_(ii)) < 3))
+% %            success = success + 1;
+% %        end
+%     end
+% %     fprintf('Profile size: %i, percent correct: %f\n', profile_length, (success/length(change_in_future_)));
+%     fprintf('Profile size: %i, percent correct: %f\n', profile_length, (success/tried));
+% end
+% %fprintf('Success: %f', (success/length(change_in_future_)));
+% 
+% 
+% 
+% time_for_future = 300; %seconds, chosen arbitrarily
+% %lots of plots, prepare your anus
+% %change_in_future_300 = change_in_future([btce_data.last],300);
+% trials = [];
+% change_in_future_ = [];
+% macd = [];
+% delta_macd = [];
+% trial.quantity = 0;
+% trial.future_length = 0;
+% trial.ii = 0;
+% trial.short = 0;
+% trial.long = 0;
+% trial.sig = 0;
+% trial.slope = 0;
+% for future_length = 360
+%     change_in_future_ = change_in_future([btce_data.last],future_length);
+%     for ii = 5:5:120
+%         for short = 6:2:18
+%             for long = 22:2:30
+%                 for sig = 6:1:12
+%                     %macd = moving_average_convergence_divergence([btce_data.last],12,26,9,ii);
+%                     macd = moving_average_convergence_divergence([btce_data.last],short,long,sig,ii);
+%                     delta_macd = [0 (macd(2:end)-macd(1:end-1))];
+%                     delta_delta_macd = [0 (delta_macd(2:end)-delta_macd(1:end-1))];
+%                     delta_delta_delta_macd = [0 (delta_delta_macd(2:end)-delta_delta_macd(1:end-1))];                    
+%                     
+%                     
+%                     change_thresh = (change_in_future_(:,2)>-0.011);
+%                     slope_threshold = max(delta_macd(change_thresh));
+%                     
+%                     %i can't get this to work, wtf, oh well, just count
+%                     number_past_threshold = length(delta_macd(delta_macd>slope_threshold));
+%                     fprintf([num2str(future_length) ' second future, ' ...
+%                         num2str(ii) ' second MACD(' num2str(short) ','...
+%                         num2str(long) ',' num2str(sig) '): ' ...
+%                         num2str(number_past_threshold) '\n']);
+%                     
+%                     trial.quantity = number_past_threshold;
+%                     trial.future_length = future_length;
+%                     trial.ii = ii;
+%                     trial.short = short;
+%                     trial.long = long;
+%                     trial.sig = sig;
+%                     trial.slope = slope_threshold;
+%                     trials = [trials trial];
+%                     
+%                     figure;
+%                     scatter(delta_delta_delta_macd(1:length(change_in_future_(:,2))), change_in_future_(:,2));
+% 
+%                     %figure;
+%                     %scatter(delta_macd(1:length(change_in_future_(:,2))), change_in_future_(:,2));
+%                     %title(['Price change: ' num2str(ii) ' seconds, macd_dt: ' num2str(jj) ' seconds']);
+%                 end
+%             end
+%         end
+%     end
+% end
+% 
+% % figure;
+% % scatter(delta_macd(1:length(change_in_future_300(:,2))), change_in_future_300(:,2));
+% 
+% wallet

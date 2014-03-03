@@ -58,21 +58,21 @@ change_2880_colors = change_color(change_in_future_2880, -.005);
 count = 0;
 gain = {};
 
-short = 4:1:15;
-long = 16:1:32;
-sig = 5:1:18;
-period = 5:5:200;
-macd_window = 10:10:100;
+% short = 4:1:15;
+% long = 16:1:32;
+% sig = 5:1:18;
+% period = 5:5:200;
+% macd_window = 10:10:100;
 
-% short = 7;
-% long = 17;
-% sig = 8;
-% period = 10;
-% macd_window = 20;
+short = 9;
+long = 17;
+sig = 9;
+period = 15;
+macd_window = 10;
 
- matlabpool(4);
- parfor ii = 1:length(short)
-%for ii = 1:length(short)
+ %matlabpool(4);
+ %parfor ii = 1:length(short)
+for ii = 1:length(short)
     for jj = 1:length(long)
         for kk = 1:length(sig)
             for ll = 1:length(period)
@@ -117,8 +117,8 @@ macd_window = 10:10:100;
                                 min_since_switch = min(min_since_switch,macd(mm));
                                 count_since_switch = count_since_switch + 1;
                             else
-                                if((count_since_switch > threshold))% &&...
-                                        %(min(macd(max(1,mm-macd_window(oo)):mm))<-0.7402))
+                                if((count_since_switch > threshold) &&...
+                                        (min(macd(max(1,mm-macd_window(oo)):mm))<-.2859))
                                     sell_price(end+1) = btce_data.last(mm);
                                     sell_time(end+1) = btce_data.updated(mm);
                                     if(mm > length(change_in_future_2880.low))
@@ -139,36 +139,36 @@ macd_window = 10:10:100;
                         end
                     end
                     %%%%%%Scatter plot of delta_macd vs. change_in_future
-%                     fprintf('MACD(%d, %d, %d)x%d: %f\n',short(ii), long(jj), sig(kk),...
-%                         period(ll), (sell_price(1:length(buy_price))/buy_price));
-%                     figure(1);
-%                     scatter(sell_spread, sell_change); hold on;
-%                     %                 xlim([0 .15]); ylim([-.05 .005]);
-%                     %                 cutoff = -0.005+zeros(length(0:.005:.15),1);
-%                     %                 scatter(0:.005:.15,cutoff, 'r');
-%                     pause; hold off;
-%                     close all;
-%                     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%                     %%%Plot of price vs. time with sell points
-%                     for nn = 1:length(sell_time)
-%                         figure(2);
-%                         subplot(2,1,1); hold on;
-%                         plot(btce_data.updated,btce_data.last);
-%                         scatter(sell_time(nn), sell_price(nn), 'g');
-%                         [min_ ix_]= min(btce_data.last(sell_index(nn):sell_index(nn)+2880));
-%                         scatter(btce_data.updated(ix_+sell_index(nn)),min_,'c');
-%                         %scatter(buy_time, buy_price, 'r');
-%                         legend('Price','Sells','Buys');
-%                         
-%                         subplot(2,1,2); hold on;
-%                         plot(btce_data.updated,zeros(1,length(btce_data.updated)),'k');
-%                         plot(btce_data.updated,macd,'k','LineWidth',2);
-%                         plot(btce_data.updated,macd_line,'r','LineWidth',2);
-%                         plot(btce_data.updated,signal_line,'c','LineWidth',2);
-%                         legend('Zero','Difference','MACD','Signal');
-%                         pause; hold off;
-%                         close all;
-%                     end
+                    fprintf('MACD(%d, %d, %d)x%d: %f\n',short(ii), long(jj), sig(kk),...
+                        period(ll), (sell_price(1:length(buy_price))/buy_price));
+                    figure(1);
+                    scatter(sell_spread, sell_change); hold on;
+                    %                 xlim([0 .15]); ylim([-.05 .005]);
+                    %                 cutoff = -0.005+zeros(length(0:.005:.15),1);
+                    %                 scatter(0:.005:.15,cutoff, 'r');
+                    pause; hold off;
+                    close all;
+                    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+                    %%%Plot of price vs. time with sell points
+                    for nn = 1:length(sell_time)
+                        figure(2);
+                        subplot(2,1,1); hold on;
+                        plot(btce_data.updated,btce_data.last);
+                        scatter(sell_time(nn), sell_price(nn), 'g');
+                        [min_ ix_]= min(btce_data.last(sell_index(nn):sell_index(nn)+2880));
+                        scatter(btce_data.updated(ix_+sell_index(nn)),min_,'c');
+                        %scatter(buy_time, buy_price, 'r');
+                        legend('Price','Sells','Buys');
+                        
+                        subplot(2,1,2); hold on;
+                        plot(btce_data.updated,zeros(1,length(btce_data.updated)),'k');
+                        plot(btce_data.updated,macd,'k','LineWidth',2);
+                        plot(btce_data.updated,macd_line,'r','LineWidth',2);
+                        plot(btce_data.updated,signal_line,'c','LineWidth',2);
+                        legend('Zero','Difference','MACD','Signal');
+                        pause; hold off;
+                        close all;
+                    end
                     
                     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
                     %[profit_number slope] = calc_profit(sell_change, sell_delta, 1);
@@ -179,7 +179,7 @@ macd_window = 10:10:100;
                         ((kk-1)*length(period)*length(macd_window)) + ...
                         ((ll-1)*length(macd_window)) + oo;
                     gain{ii}{gain_index,1} = (sell_price(1:length(buy_price)))/buy_price;
-                    gain{ii}{gain_index,2} = sprintf('MACD(%d, %d, %d)x%d,%d window: %f\n',short(ii), long(jj), sig(kk),...
+                    gain{ii}{gain_index,2} = sprintf('MACD(%d, %d, %d)x%d,window: %d, %f\n',short(ii), long(jj), sig(kk),...
                         period(ll), macd_window(oo),(sell_price(1:length(buy_price))/buy_price));
                     gain{ii}{gain_index,3} = profit_number;
                     gain{ii}{gain_index,4} = spread_thresh;

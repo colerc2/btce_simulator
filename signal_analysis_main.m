@@ -47,13 +47,13 @@ fprintf('done!\n');
 %plot time updated vs sample
 % figure;
 % plot(btce_data.updated);
-change_in_future_360 = change_in_future(btce_data.last,360);
-change_in_future_720 = change_in_future(btce_data.last,720);
-change_in_future_1440 = change_in_future(btce_data.last,1440);
+% change_in_future_360 = change_in_future(btce_data.last,360);
+% change_in_future_720 = change_in_future(btce_data.last,720);
+% change_in_future_1440 = change_in_future(btce_data.last,1440);
 change_in_future_2880 = change_in_future(btce_data.last,2880);
-change_360_colors = change_color(change_in_future_360, -.005);
-change_720_colors = change_color(change_in_future_720, -.005);
-change_1440_colors = change_color(change_in_future_1440, -.005);
+% change_360_colors = change_color(change_in_future_360, -.005);
+% change_720_colors = change_color(change_in_future_720, -.005);
+% change_1440_colors = change_color(change_in_future_1440, -.005);
 change_2880_colors = change_color(change_in_future_2880, -.005);
 count = 0;
 gain = {};
@@ -64,11 +64,11 @@ gain = {};
 % period = 5:5:200;
 % macd_window = 10:10:100;
 
-short = 9;
-long = 17;
+short = 12;
+long = 26;
 sig = 9;
-period = 15;
-macd_window = 10;
+period = 25:25:250;
+macd_window = 30;
 
  %matlabpool(4);
  %parfor ii = 1:length(short)
@@ -117,8 +117,8 @@ for ii = 1:length(short)
                                 min_since_switch = min(min_since_switch,macd(mm));
                                 count_since_switch = count_since_switch + 1;
                             else
-                                if((count_since_switch > threshold) &&...
-                                        (min(macd(max(1,mm-macd_window(oo)):mm))<-.2859))
+                                if((count_since_switch > threshold))% &&...
+%                                         (min(macd(max(1,mm-macd_window(oo)):mm))<-.2859))
                                     sell_price(end+1) = btce_data.last(mm);
                                     sell_time(end+1) = btce_data.updated(mm);
                                     if(mm > length(change_in_future_2880.low))
@@ -150,25 +150,25 @@ for ii = 1:length(short)
                     close all;
                     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
                     %%%Plot of price vs. time with sell points
-                    for nn = 1:length(sell_time)
-                        figure(2);
-                        subplot(2,1,1); hold on;
-                        plot(btce_data.updated,btce_data.last);
-                        scatter(sell_time(nn), sell_price(nn), 'g');
-                        [min_ ix_]= min(btce_data.last(sell_index(nn):sell_index(nn)+2880));
-                        scatter(btce_data.updated(ix_+sell_index(nn)),min_,'c');
-                        %scatter(buy_time, buy_price, 'r');
-                        legend('Price','Sells','Buys');
-                        
-                        subplot(2,1,2); hold on;
-                        plot(btce_data.updated,zeros(1,length(btce_data.updated)),'k');
-                        plot(btce_data.updated,macd,'k','LineWidth',2);
-                        plot(btce_data.updated,macd_line,'r','LineWidth',2);
-                        plot(btce_data.updated,signal_line,'c','LineWidth',2);
-                        legend('Zero','Difference','MACD','Signal');
-                        pause; hold off;
-                        close all;
-                    end
+%                     for nn = 1:length(sell_time)
+%                         figure(2);
+%                         subplot(2,1,1); hold on;
+%                         plot(btce_data.updated,btce_data.last);
+%                         scatter(sell_time(nn), sell_price(nn), 'g');
+%                         [min_ ix_]= min(btce_data.last(sell_index(nn):sell_index(nn)+2880));
+%                         scatter(btce_data.updated(ix_+sell_index(nn)),min_,'c');
+%                         %scatter(buy_time, buy_price, 'r');
+%                         legend('Price','Sells','Buys');
+%                         
+%                         subplot(2,1,2); hold on;
+%                         plot(btce_data.updated,zeros(1,length(btce_data.updated)),'k');
+%                         plot(btce_data.updated,macd,'k','LineWidth',2);
+%                         plot(btce_data.updated,macd_line,'r','LineWidth',2);
+%                         plot(btce_data.updated,signal_line,'c','LineWidth',2);
+%                         legend('Zero','Difference','MACD','Signal');
+%                         pause; hold off;
+%                         close all;
+%                     end
                     
                     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
                     %[profit_number slope] = calc_profit(sell_change, sell_delta, 1);
@@ -191,8 +191,8 @@ for ii = 1:length(short)
         end
     end
 end
-matlabpool close
-gain = [gain{1};gain{2};gain{3};gain{4};gain{5};gain{6}];
+%matlabpool close
+%gain = [gain{1};gain{2};gain{3};gain{4};gain{5};gain{6}];
 [sorted_, ix_] = sort([gain{:,3}]);
 [gain{ix_(1:10),3}]
 [gain{ix_(1:10),2}]

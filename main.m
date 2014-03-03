@@ -12,8 +12,9 @@ data_file_name = 'btc_usd_depth_nov_24_dec_18';
 data_file_extension = '.csv';
 load_from_mat = 1; %if you've loaded this file before, set this to 1
 pair = 'btc_usd';
-sliding_window_width = 5000;%seconds
-plot_every_n_seconds = 100;
+sliding_window_width = 100000;%seconds
+plot_every_n_seconds = 25000;
+show_sliding_plot = 0;
 simulation_speed = 1;%1 is as fast as possible(gg cpu), 0 is real time(lame):TODO
 btc_fee = .002;
 window_length = 1; %minute(TODO, see above), for financial analysis stuff, maf, emaf, macd, etc.
@@ -61,31 +62,33 @@ fprintf('done!\n');
 %do a bunch of singal processing that the bot will use later
 fprintf('Doing some data crunching (maf and such)...');
 %simple moving average filters, second param changes the order (seconds)
-maf_10 = moving_average(btce_data.last,10);
-maf_100 = moving_average(btce_data.last,100);
+%maf_10 = moving_average(btce_data.last,10);
+%maf_100 = moving_average(btce_data.last,100);
 %weighted moving average
-wmaf_10 = weighted_moving_average(btce_data.last,10);
-wmaf_100 = weighted_moving_average(btce_data.last,100);
+% wmaf_10 = weighted_moving_average(btce_data.last,10);
+% wmaf_100 = weighted_moving_average(btce_data.last,100);
 %exponential moving average
-emaf_005 = exponential_moving_average(btce_data.last,0.005);
-emaf_015 = exponential_moving_average(btce_data.last,0.015);
+% emaf_005 = exponential_moving_average(btce_data.last,0.005);
+% emaf_015 = exponential_moving_average(btce_data.last,0.015);
 %TODO: Moving average convergence-divergence, first three parameters are
 %the typical weights applied, i.e. the n-term MAF, and the fourth parameter
 %is the time period that each of these will be applied over, e.g. 12, 26,
 %9, 10 correspond to a 120sec,260,sec,90sec MACD
-short = 9;
-long = 17;
+short = 12;
+long = 26;
 sig = 9;
-period = 15;
-macd_window = 10;%used for sell signal later in code
-macd_spread_thresh = -.2859;%used for sell signal later in code
-[macd, macd_line, signal_line] = ...
-    moving_average_convergence_divergence(btce_data.last,...
-    short, long, sig, period);
+period = [100 20 60 70 80 90 120];
+macd_window = 30;%used for sell signal later in code
+macd_spread_thresh = [-.6 -2 -0.75 -0.5 -0.5 -0.5 -0.6];%used for sell signal later in code
+for ii = 1:length(period)
+    [macd(ii,:), macd_line(ii,:), signal_line(ii,:)] = ...
+        moving_average_convergence_divergence(btce_data.last,...
+        short, long, sig, period(ii));
+end
 %scale her so she's easier to plot with other stuff
 %max_macd = max(abs(macd));
 %macd = macd*(10/max_macd);
-delta_macd = [0 (macd(2:end)-macd(1:end-1))];
+delta_macd = [0 (macd(1,2:end)-macd(1,1:end-1))];
 
 change_in_future_2880 = change_in_future(btce_data.last,2880);
 %TODO: plot all of these against the maximum/minimum change in price over
@@ -113,25 +116,33 @@ sells = [];
 %loop through each data point, should be at a maximum of 1Hz
 for ii = 1:length(btce_data.updated)
     %make a sliding window plot
-    if(mod(ii,plot_every_n_seconds)==0)
+    if((mod(ii,plot_every_n_seconds)==0) &&(show_sliding_plot==1))
         figure(2);subplot(2,1,1);hold on;
         
         plot_indices = max(1,ii-sliding_window_width):min(length(btce_data.updated),ii);
         
         %plots buys and sells, this is gonna suck TODO
         
+        
         h = plot(btce_data.updated(plot_indices),btce_data.last(plot_indices),'b');
-        legend('Last');
+        if(~isempty(sells))
+            temp = sells;
+            temp(temp.completed==0) = [];
+            scatter(sells.time_completed,sells.price,'g');
+        end
+        
+        legend('Last','Sells');
         set(h(1), 'LineWidth', 2);
         xlim([(addtodate(btce_data.updated(ii),-sliding_window_width,'second')) btce_data.updated(ii)]);
         datetick('x', 'keepticks', 'keeplimits'); %<----needs changed for data >24h
         subplot(2,1,2);
+        
         %scale = (max(abs(change_in_future_2880.low*100)))/max(macd);
         %h = plot(btce_data.updated(plot_indices), 100*change_in_future_2880.low(plot_indices),'b',...
         %   btce_data.updated(plot_indices), 100*change_in_future_2880.high(plot_indices),'g',...
-        h = plot(btce_data.updated(plot_indices),macd(plot_indices),'r',...
-            btce_data.updated(plot_indices),macd_line(plot_indices),'b',...
-            btce_data.updated(plot_indices),signal_line(plot_indices),'g',...
+        h = plot(btce_data.updated(plot_indices),macd(1,plot_indices),'r',...
+            btce_data.updated(plot_indices),macd_line(1,plot_indices),'b',...
+            btce_data.updated(plot_indices),signal_line(1,plot_indices),'g',...
             btce_data.updated(plot_indices), zeros(1,length(plot_indices)),'k');
         
         %btce_data.updated(plot_indices), macd(plot_indices),'r',...
@@ -148,9 +159,9 @@ for ii = 1:length(btce_data.updated)
     
     %do yo thang bot
     %this if statement checks for a sell signal
-    if((min(macd(max(1,ii-macd_window):ii))<-1.5023) && ...%meets sell req.
-            ((macd(ii)>0) && (macd(ii-1) <0)))%macd is giving sell signal
-        %if(delta_macd(ii) > 0.0167)%if the macd has a negative slope below threshold
+    if(any_indicator_says_sell(macd(:,max(1,ii-macd_window):ii),macd_spread_thresh)==1)
+    %if((min(macd(max(1,ii-macd_window):ii))<macd_spread_thresh) && ...%meets sell req.
+    %        ((macd(ii)>0) && (macd(ii-1) <0)))%macd is giving sell signal
         %make sure we haven't had a sell in the last 100 seconds
         go_ahead_with_sell = 0;
         if(isempty(sells))
@@ -232,8 +243,8 @@ for ii = 1:length(btce_data.updated)
                     %TODO this needs to be magical process
                     temp = [];
                     temp.time = btce_data.updated(ii);
-                    temp.quantity = usd_to_wallet/(sells(jj).price*.99);
-                    temp.price = sells(jj).price*.99;
+                    temp.quantity = usd_to_wallet/(sells(jj).price*.98);
+                    temp.price = sells(jj).price*.98;
                     temp.units = 'btc';
                     temp.buy = btce_data.buy(ii);
                     temp.sell = btce_data.sell(ii);
@@ -258,6 +269,7 @@ wallet
 %test plot for data vs. date
 figure; hold on;
 plot(btce_data.updated, btce_data.last);
+datetick('x');
 %datetick('x', 'keepticks', 'keeplimits'); %<----needs changed for data >24h
 scatter([sells.time_completed],[sells.price],'r');
 buys_non_zero = [buys.time_completed];
@@ -266,6 +278,15 @@ buys_non_zero_price = [buys.price];
 buys_non_zero_price = buys_non_zero_price(1:length(buys_non_zero));
 scatter(buys_non_zero,buys_non_zero_price,'g');
 ylabel('BTC/USD ($)'); xlabel('Time');
+
+buy_times = [];
+for ii = 1:length(buys)
+   if(buys(ii).completed==1)
+       buy_times = [buy_times (buys(ii).time_completed-buys(ii).associated_sell.time)];
+   end
+end
+buy_times = buy_times*86400;
+buy_times
 
 %pause;
 %

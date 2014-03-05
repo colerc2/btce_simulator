@@ -6,13 +6,14 @@ function data = read_btce_csv(file_name, percent)
 %open file handle
 fid = fopen(file_name,'rt');
 
-%find number of lines in file
-sys_cmd = ['find /c /v ""<' file_name];
-[return_code ,sys_cmd_answer] = system(sys_cmd);
-if(return_code == 0)%command returned successfully
-    line_count = str2double(sys_cmd_answer);
-end
-line_count = round(line_count * percent) ;
+%find number of lines in file TODO: fix, currently searching for \r\n
+% sys_cmd = ['find /c /v ""<' file_name];
+% [return_code ,sys_cmd_answer] = system(sys_cmd);
+% if(return_code == 0)%command returned successfully
+%     line_count = str2double(sys_cmd_answer);
+% end
+% line_count = round(line_count * percent) ;
+line_count = 1356922;%wow such good coding TODO
 
 %preallocate cell array
 %line_array = cell(1000,1);

@@ -77,9 +77,11 @@ fprintf('Doing some data crunching (maf and such)...');
 short = 12;
 long = 26;
 sig = 9;
-period = [100 20 60 70 80 90 120];
+%period = [100 20 60 70 80 90 120];
 macd_window = 30;%used for sell signal later in code
-macd_spread_thresh = [-.6 -2 -0.75 -0.5 -0.5 -0.5 -0.6];%used for sell signal later in code
+%macd_spread_thresh = [-.6 -2 -0.75 -0.5 -0.5 -0.5 -0.6];%used for sell signal later in code
+period = 100;
+macd_spread_thresh = -0.6;
 for ii = 1:length(period)
     [macd(ii,:), macd_line(ii,:), signal_line(ii,:)] = ...
         moving_average_convergence_divergence(btce_data.last,...
@@ -177,6 +179,25 @@ for ii = 1:length(btce_data.updated)
             %check if it just crossed over
             %if((macd(ii) < 0) && (macd(ii-1) > 0))
             %fuck it, sell
+            figure(2);
+            subplot(2,1,1); hold on;
+            indices = ii-50000:ii+50000;
+            plot(btce_data.updated(indices),btce_data.last(indices),...
+                'LineWidth', 2);
+            scatter(btce_data.updated(ii), btce_data.last(ii),'g');
+            datetick('x');grid on;
+            subplot(2,1,2); hold on;
+            plot(btce_data.updated(indices), macd(indices),...
+                'k','LineWidth',2);
+            plot(btce_data.updated(indices), macd_line(indices),...
+                'b','LineWidth',2);
+            plot(btce_data.updated(indices), signal_line(indices),...
+                'r','LineWidth', 2);
+            scatter(btce_data.updated(ii),0,'g');
+            legend('Histogram', 'MACD','Signal');
+            datetick('x');grid on;
+            pause; close(2);
+            
             temp = [];
             temp.time = btce_data.updated(ii);
             temp.quantity = wallet.btc*0.25;

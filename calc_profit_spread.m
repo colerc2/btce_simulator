@@ -1,5 +1,5 @@
 function [total_profit, slope, count, per_sale] = calc_profit_spread(change_in_future, sell_spread, max_outliers)
-    [sell_spread ix] = sort(sell_spread);
+    [sell_spread ix] = sort(sell_spread, 'descend');
     change_in_future = change_in_future(ix);
     
     total_profit = 0;

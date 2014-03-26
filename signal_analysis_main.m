@@ -49,12 +49,12 @@ fprintf('done!\n');
 % plot(btce_data.updated);
 % change_in_future_360 = change_in_future(btce_data.last,360);
 % change_in_future_720 = change_in_future(btce_data.last,720);
- change_in_future_1440 = change_in_future(btce_data.last,1440);
-%change_in_future_2880 = change_in_future(btce_data.last,2880);
+% change_in_future_1440 = change_in_future(btce_data.last,1440);
+  change_in_future_2880 = change_in_future(btce_data.last,2880);
 % change_360_colors = change_color(change_in_future_360, -.005);
 % change_720_colors = change_color(change_in_future_720, -.005);
- change_1440_colors = change_color(change_in_future_1440, -.005);
-%change_2880_colors = change_color(change_in_future_2880, -.005);
+% change_1440_colors = change_color(change_in_future_1440, -.005);
+change_2880_colors = change_color(change_in_future_2880, -.02);
 count = 0;
 gain = {};
 
@@ -64,15 +64,16 @@ gain = {};
 % period = 5:5:200;
 % macd_window = 10:10:100;
 
-short = 8:13;
-long = 26;
-sig = 9;
-period = 10:10:100;
-macd_window = 20:5:40;
+short = 11:14;
+long = 22:30;
+sig = 5:15;
+period = 10:10:200;
+macd_window = 20:10:130;
+tic;
 
- %matlabpool(4);
- %parfor ii = 1:length(short)
-for ii = 1:length(short)
+ matlabpool(4);
+ parfor ii = 1:length(short)
+% for ii = 1:length(short)
     for jj = 1:length(long)
         for kk = 1:length(sig)
             for ll = 1:length(period)
@@ -107,10 +108,10 @@ for ii = 1:length(short)
                                         %(min(macd(max(1,mm-macd_window(oo)):mm))<-.6))
                                     sell_price(end+1) = btce_data.last(mm);
                                     sell_time(end+1) = btce_data.updated(mm);
-                                    if(mm > length(change_in_future_1440.low))
+                                    if(mm > length(change_in_future_2880.low))
                                         sell_change(end+1) = 0;
                                     else
-                                        sell_change(end+1) = change_in_future_1440.low(mm);
+                                        sell_change(end+1) = change_in_future_2880.low(mm);
                                     end
                                     sell_delta(end+1) = delta_macd(mm);
                                     sell_index(end+1) = mm;
@@ -145,10 +146,12 @@ for ii = 1:length(short)
 %                     fprintf('MACD(%d, %d, %d)x%d: %f\n',short(ii), long(jj), sig(kk),...
 %                         period(ll), (sell_price(1:length(buy_price))/buy_price));
 %                     figure(1);
-%                     scatter(sell_spread, sell_change); hold on;
+%                     scatter(sell_spread(1:end-20), macd_line(sell_index(1:end-20)),...
+%                         50,change_2880_colors(sell_index(1:end-20),:));
+%                     %scatter(sell_spread, sell_change); hold on;
 %                     %                 xlim([0 .15]); ylim([-.05 .005]);
-%                     %                 cutoff = -0.005+zeros(length(0:.005:.15),1);
-%                     %                 scatter(0:.005:.15,cutoff, 'r');
+%                                     %cutoff = -0.005+zeros(length(0:.25:5),1);
+%                                     %scatter(0:.25:5,cutoff, 'r');
 %                     pause; hold off;
 %                     close all;
                     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -174,7 +177,7 @@ for ii = 1:length(short)
 %                         pause; hold off;
 %                         close all;
 %                     end
-%                     
+                    
                     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
                     %[profit_number slope] = calc_profit(sell_change, sell_delta, 1);
                     [profit_number, spread_thresh, sell_count, per_sale] = ...
@@ -196,8 +199,9 @@ for ii = 1:length(short)
         end
     end
 end
-%matlabpool close
-gain = [gain{1};gain{2};gain{3};gain{4};gain{5};gain{6}];
+toc
+matlabpool close
+gain = [gain{1};gain{2};gain{3};gain{4}];
 [sorted_, ix_] = sort([gain{:,3}]);
 [gain{ix_(1:10),3}]
 [gain{ix_(1:10),2}]

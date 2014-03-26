@@ -7,17 +7,21 @@ function [total_profit, slope, count, per_sale] = calc_profit_spread(change_in_f
     slope = 0;
     count = 0;
     for ii = 1:length(ix)
-        if(change_in_future(ii) < -.01)
+        if(change_in_future(ii) < -.04)
            total_profit = total_profit + change_in_future(ii);
            count = count + 1;
         else
-            if(total_outliers < max_outliers)
-                total_outliers = total_outliers + 1;
-                total_profit = total_profit + change_in_future(ii);
-            else
-                slope = sell_spread(ii-1);
+%             if(total_outliers < max_outliers)
+%                 total_outliers = total_outliers + 1;
+%                 total_profit = total_profit + change_in_future(ii);
+%             else
+                if(ii == 1)
+                    slope = 0;
+                else
+                    slope = sell_spread(ii-1);
+                end
                 break;
-            end
+%             end
         end
     end
     if(count == 0)

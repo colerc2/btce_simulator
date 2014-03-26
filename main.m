@@ -75,13 +75,13 @@ fprintf('Doing some data crunching (maf and such)...');
 %is the time period that each of these will be applied over, e.g. 12, 26,
 %9, 10 correspond to a 120sec,260,sec,90sec MACD
 short = 12;
-long = 26;
-sig = 9;
-%period = [100 20 60 70 80 90 120];
-macd_window = 30;%used for sell signal later in code
-%macd_spread_thresh = [-.6 -2 -0.75 -0.5 -0.5 -0.5 -0.6];%used for sell signal later in code
-period = 100;
-macd_spread_thresh = -0.6;
+long = 24;
+sig = 6;
+%period = [10 10 10];
+macd_window = 20;%used for sell signal later in code
+%macd_spread_thresh = [];%used for sell signal later in code
+period = 20;
+macd_spread_thresh = 0.89;
 for ii = 1:length(period)
     [macd(ii,:), macd_line(ii,:), signal_line(ii,:)] = ...
         moving_average_convergence_divergence(btce_data.last,...
@@ -179,24 +179,27 @@ for ii = 1:length(btce_data.updated)
             %check if it just crossed over
             %if((macd(ii) < 0) && (macd(ii-1) > 0))
             %fuck it, sell
-            figure(2);
-            subplot(2,1,1); hold on;
-            indices = ii-50000:ii+50000;
-            plot(btce_data.updated(indices),btce_data.last(indices),...
-                'LineWidth', 2);
-            scatter(btce_data.updated(ii), btce_data.last(ii),'g');
-            datetick('x');grid on;
-            subplot(2,1,2); hold on;
-            plot(btce_data.updated(indices), macd(indices),...
-                'k','LineWidth',2);
-            plot(btce_data.updated(indices), macd_line(indices),...
-                'b','LineWidth',2);
-            plot(btce_data.updated(indices), signal_line(indices),...
-                'r','LineWidth', 2);
-            scatter(btce_data.updated(ii),0,'g');
-            legend('Histogram', 'MACD','Signal');
-            datetick('x');grid on;
-            pause; close(2);
+            
+            %%%%%%%%%%%plot sell if you feel like it
+%             figure(2);
+%             subplot(2,1,1); hold on;
+%             indices = ii-50000:ii+50000;
+%             plot(btce_data.updated(indices),btce_data.last(indices),...
+%                 'LineWidth', 2);
+%             scatter(btce_data.updated(ii), btce_data.last(ii),'g');
+%             datetick('x');grid on;
+%             subplot(2,1,2); hold on;
+%             plot(btce_data.updated(indices), macd(indices),...
+%                 'k','LineWidth',2);
+%             plot(btce_data.updated(indices), macd_line(indices),...
+%                 'b','LineWidth',2);
+%             plot(btce_data.updated(indices), signal_line(indices),...
+%                 'r','LineWidth', 2);
+%             scatter(btce_data.updated(ii),0,'g');
+%             legend('Histogram', 'MACD','Signal');
+%             datetick('x');grid on;
+%             pause(2);% close(2);
+            %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
             
             temp = [];
             temp.time = btce_data.updated(ii);
@@ -264,8 +267,8 @@ for ii = 1:length(btce_data.updated)
                     %TODO this needs to be magical process
                     temp = [];
                     temp.time = btce_data.updated(ii);
-                    temp.quantity = usd_to_wallet/(sells(jj).price*.98);
-                    temp.price = sells(jj).price*.98;
+                    temp.quantity = usd_to_wallet/(sells(jj).price*.96);
+                    temp.price = sells(jj).price*.96;
                     temp.units = 'btc';
                     temp.buy = btce_data.buy(ii);
                     temp.sell = btce_data.sell(ii);

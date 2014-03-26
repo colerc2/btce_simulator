@@ -9,10 +9,12 @@ function [colors ] = change_color( change_vs_time, thresh )
     %shade_of_red = (change_vs_time<thresh);
     for ii = 1:length(change_vs_time)
         if(change_vs_time(ii) < thresh)
-           colors(ii,1) =  (abs(change_vs_time(ii))-abs(thresh))/...
-               (abs(min_change)-abs(thresh));
-           colors(ii,2) = .05;
-           colors(ii,3) = (1-colors(ii,1))/2;
+           %colors(ii,1) =  (abs(change_vs_time(ii))-abs(thresh))/...
+            %   (abs(min_change)-abs(thresh));
+%            colors(ii,2) = .05;
+%            colors(ii,3) = (1-colors(ii,1))/2;
+           colors(ii,:) = [1 0 0]; 
+
         else
            colors(ii,:) = [0 0 1]; 
         end

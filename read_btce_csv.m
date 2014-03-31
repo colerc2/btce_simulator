@@ -13,7 +13,8 @@ fid = fopen(file_name,'rt');
 %     line_count = str2double(sys_cmd_answer);
 % end
 % line_count = round(line_count * percent) ;
-line_count = 1356922;%wow such good coding TODO
+%line_count = 1356922;%wow such good coding TODO
+line_count = 1202687;%wow such good coding TODO
 
 %preallocate cell array
 %line_array = cell(1000,1);

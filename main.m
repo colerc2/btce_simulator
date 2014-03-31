@@ -6,12 +6,14 @@ clear all; close all; clc;
 %the last 60 seconds, not the last 60 data points, fuck that's hard
 
 %runtime params
+%number of lines 1202668
 data_file_path = 'data\';
 %data_file_name = 'btc_usd_depth';
-data_file_name = 'btc_usd_depth_nov_24_dec_18';
+%data_file_name = 'btc_usd_depth_nov_24_dec_18';
+data_file_name = 'ltc_usd_depth_nov_27_dec_18';
 data_file_extension = '.csv';
-load_from_mat = 1; %if you've loaded this file before, set this to 1
-pair = 'btc_usd';
+load_from_mat = 0; %if you've loaded this file before, set this to 1
+pair = 'ltc_usd';
 sliding_window_width = 100000;%seconds
 plot_every_n_seconds = 25000;
 show_sliding_plot = 0;
